@@ -5,11 +5,11 @@
 
     <application
         android:allowBackup="false"
-        android:label="MINHAJ APPS"
+        android:label="Minhaj Apps"
         android:icon="@drawable/ic_launcher"
         android:roundIcon="@drawable/ic_launcher"
         android:usesCleartextTraffic="false"
-        android:theme="@android:style/Theme.DeviceDefault.DayNight.NoActionBar">
+        android:theme="@android:style/Theme.Material.NoActionBar">
 
         <activity
             android:name=".MainActivity"
@@ -22,6 +22,7 @@
             </intent-filter>
 
         </activity>
+
     </application>
 
 </manifest>
