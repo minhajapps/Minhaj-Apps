@@ -1,3 +1,4 @@
+
 package com.minhajapps.webapp;
 
 import android.content.Intent;
@@ -86,7 +87,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.setWebChromeClient(new WebChromeClient());
-
         webView.loadUrl(HOME_URL);
     }
 
@@ -109,4 +109,4 @@ public class MainActivity extends AppCompatActivity {
 
         super.onDestroy();
     }
-          }
+}
