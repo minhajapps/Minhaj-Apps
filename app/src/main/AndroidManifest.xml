@@ -1,20 +1,20 @@
-<?xml version="1.1" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:allowBackup="false"
-        android:label="Minhaj Apps"
-        android:icon="@drawable/ic_launcher"
-        android:roundIcon="@drawable/ic_launcher"
+        android:allowBackup="true"
+        android:label="MINHAJ APPS"
         android:usesCleartextTraffic="false"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:theme="@style/AppTheme">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden|uiMode">
+            android:configChanges="orientation|screenSize|keyboardHidden">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
