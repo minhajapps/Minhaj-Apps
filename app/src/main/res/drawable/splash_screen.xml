@@ -7,4 +7,16 @@
         </shape>
     </item>
 
+    <item
+        android:width="128dp"
+        android:height="128dp"
+        android:gravity="center">
+
+        <bitmap
+            android:src="@drawable/splash_logo_cropped"
+            android:gravity="fill"
+            android:filter="true" />
+
+    </item>
+
 </layer-list>
