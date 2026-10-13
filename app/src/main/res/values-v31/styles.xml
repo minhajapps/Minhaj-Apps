@@ -12,7 +12,11 @@
         </item>
 
         <item name="android:windowSplashScreenAnimatedIcon">
-            @drawable/ic_launcher
+            @drawable/splash_logo_cropped
+        </item>
+
+        <item name="android:windowSplashScreenIconBackgroundColor">
+            @android:color/transparent
         </item>
 
         <item name="android:windowBackground">
