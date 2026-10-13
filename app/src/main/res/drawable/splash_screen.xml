@@ -4,13 +4,13 @@
     <item android:drawable="@color/splash_background" />
 
     <item
-        android:width="128dp"
-        android:height="128dp"
+        android:width="72dp"
+        android:height="72dp"
         android:gravity="center">
 
         <bitmap
             android:src="@drawable/splash_logo_cropped"
-            android:gravity="center"
+            android:gravity="fill"
             android:filter="true" />
 
     </item>
