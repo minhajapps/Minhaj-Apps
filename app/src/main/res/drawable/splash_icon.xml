@@ -1,16 +1,1 @@
-
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <item
-        android:width="72dp"
-        android:height="72dp"
-        android:gravity="center">
-
-        <bitmap
-            android:src="@drawable/ic_launcher"
-            android:gravity="center"
-            android:filter="true" />
-
-    </item>
-
-</layer-list>
+"<inset xmlns:android="http://schemas.android.com/apk/res/android" android:drawable="@drawable/splash_logo_cropped" android:insetLeft="24dp" android:insetTop="24dp" android:insetRight="24dp" android:insetBottom="24dp" />"
