@@ -8,7 +8,7 @@
         <item name="android:colorAccent">#6750A4</item>
 
         <item name="android:windowSplashScreenBackground">
-            #000000
+            @color/splash_background
         </item>
 
         <item name="android:windowSplashScreenAnimatedIcon">
