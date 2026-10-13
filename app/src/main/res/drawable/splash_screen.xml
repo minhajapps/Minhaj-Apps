@@ -4,8 +4,8 @@
     <item android:drawable="@color/splash_background" />
 
     <item
-        android:width="240dp"
-        android:height="240dp"
+        android:width="128dp"
+        android:height="128dp"
         android:gravity="center">
 
         <bitmap
