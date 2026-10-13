@@ -8,7 +8,7 @@
 
         <bitmap
             android:src="@drawable/ic_launcher"
-            android:gravity="fitCenter"
+            android:gravity="center"
             android:filter="true" />
 
     </item>
