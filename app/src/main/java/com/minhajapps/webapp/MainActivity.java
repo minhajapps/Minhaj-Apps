@@ -10,13 +10,12 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.CookieManager;
-import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -30,197 +29,155 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String HOME_URL =
             "https://minhajapps.github.io/";
-
-    private static final String ALLOWED_HOST =
-            "minhajapps.github.io";
+    private static final String HOST = "minhajapps.github.io";
 
     private WebView webView;
-    private ProgressBar progressBar;
-    private FrameLayout rootLayout;
-    private LinearLayout errorLayout;
-    private TextView errorMessage;
+    private ProgressBar progress;
+    private FrameLayout root;
+    private LinearLayout errorScreen;
 
     private final Handler handler =
             new Handler(Looper.getMainLooper());
 
-    private boolean mainPageLoaded = false;
+    private boolean pageLoaded = false;
+    private boolean mainFrameFailed = false;
+    private int navigationId = 0;
 
-    private final Runnable loadingTimeout = () -> {
-        if (!mainPageLoaded && webView != null) {
-            showError("ওয়েবসাইট লোড হতে দেরি হচ্ছে। "
-                    + "ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।");
+    private final Runnable timeout = () -> {
+        if (!pageLoaded && webView != null) {
+            showError("লোড হতে দেরি হচ্ছে। ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।");
         }
     };
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle state) {
         AppCompatDelegate.setDefaultNightMode(
-                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-        );
+                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        super.onCreate(state);
 
-        super.onCreate(savedInstanceState);
-
-        rootLayout = new FrameLayout(this);
-        rootLayout.setBackgroundColor(Color.WHITE);
-        setContentView(rootLayout);
+        root = new FrameLayout(this);
+        root.setBackgroundColor(Color.WHITE);
+        setContentView(root);
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
+        root.addView(webView, new FrameLayout.LayoutParams(
+                -1, -1));
 
-        rootLayout.addView(webView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-        ));
+        progress = new ProgressBar(this);
+        FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER);
+        root.addView(progress, pp);
 
-        progressBar = new ProgressBar(this);
-        progressBar.setIndeterminate(true);
+        buildErrorScreen();
 
-        FrameLayout.LayoutParams progressParams =
-                new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        Gravity.CENTER
-                );
-
-        rootLayout.addView(progressBar, progressParams);
-
-        createErrorLayout();
-
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setLoadsImagesAutomatically(true);
-        settings.setSupportZoom(false);
-        settings.setAllowFileAccess(false);
-        settings.setJavaScriptCanOpenWindowsAutomatically(true);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setMixedContentMode(
-                WebSettings.MIXED_CONTENT_NEVER_ALLOW
-        );
-
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(
-                webView, true
-        );
+        WebSettings s = webView.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setLoadsImagesAutomatically(true);
+        s.setSupportZoom(false);
+        s.setAllowFileAccess(false);
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        s.setMixedContentMode(
+                WebSettings.MIXED_CONTENT_NEVER_ALLOW);
 
         webView.setWebViewClient(new WebViewClient() {
-
             @Override
             public boolean shouldOverrideUrlLoading(
-                    WebView view,
-                    WebResourceRequest request
-            ) {
-                return handleUrl(request.getUrl());
+                    WebView view, WebResourceRequest request) {
+                return openUrl(request.getUrl());
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(
-                    WebView view,
-                    String url
-            ) {
-                return handleUrl(Uri.parse(url));
+                    WebView view, String url) {
+                return openUrl(Uri.parse(url));
             }
 
-            private boolean handleUrl(Uri uri) {
-                String scheme = uri.getScheme();
-                String host = uri.getHost();
-
-                if ("https".equalsIgnoreCase(scheme)
-                        && ALLOWED_HOST.equalsIgnoreCase(host)) {
+            private boolean openUrl(Uri uri) {
+                if ("https".equalsIgnoreCase(uri.getScheme())
+                        && HOST.equalsIgnoreCase(uri.getHost())) {
                     return false;
                 }
 
-                if ("http".equalsIgnoreCase(scheme)
-                        || "https".equalsIgnoreCase(scheme)
-                        || "mailto".equalsIgnoreCase(scheme)
-                        || "tel".equalsIgnoreCase(scheme)) {
+                String scheme = uri.getScheme();
+                if ("https".equalsIgnoreCase(scheme)
+                        || "http".equalsIgnoreCase(scheme)
+                        || "tel".equalsIgnoreCase(scheme)
+                        || "mailto".equalsIgnoreCase(scheme)) {
                     try {
                         startActivity(new Intent(
-                                Intent.ACTION_VIEW, uri
-                        ));
+                                Intent.ACTION_VIEW, uri));
                     } catch (Exception ignored) {
                     }
                 }
-
                 return true;
             }
 
             @Override
             public void onPageStarted(
-                    WebView view,
-                    String url,
-                    android.graphics.Bitmap favicon
-            ) {
-                mainPageLoaded = false;
-                errorLayout.setVisibility(View.GONE);
-                progressBar.setVisibility(View.VISIBLE);
+                    WebView view, String url,
+                    android.graphics.Bitmap favicon) {
+                navigationId++;
+                pageLoaded = false;
+                mainFrameFailed = false;
+                errorScreen.setVisibility(View.GONE);
+                progress.setVisibility(View.VISIBLE);
 
-                handler.removeCallbacks(loadingTimeout);
-                handler.postDelayed(loadingTimeout, 20000);
+                handler.removeCallbacks(timeout);
+                handler.postDelayed(timeout, 20000);
             }
 
             @Override
-            public void onPageFinished(
-                    WebView view,
-                    String url
-            ) {
-                mainPageLoaded = true;
-                handler.removeCallbacks(loadingTimeout);
-                progressBar.setVisibility(View.GONE);
-                errorLayout.setVisibility(View.GONE);
+            public void onPageFinished(WebView view, String url) {
+                if (mainFrameFailed) return;
+
+                pageLoaded = true;
+                handler.removeCallbacks(timeout);
+                progress.setVisibility(View.GONE);
+                errorScreen.setVisibility(View.GONE);
             }
 
             @Override
             public void onReceivedError(
-                    WebView view,
-                    WebResourceRequest request,
-                    WebResourceError error
-            ) {
+                    WebView view, WebResourceRequest request,
+                    WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    handler.removeCallbacks(loadingTimeout);
-                    showError(
-                            "ওয়েবসাইট লোড হয়নি। "
-                            + "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
-                    );
+                    mainFrameFailed = true;
+                    handler.removeCallbacks(timeout);
+                    showError("ওয়েবসাইট লোড হয়নি। ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।");
                 }
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(
-                    WebView view,
-                    int errorCode,
-                    String description,
-                    String failingUrl
-            ) {
-                if (android.os.Build.VERSION.SDK_INT < 23) {
-                    if (failingUrl != null
-                            && failingUrl.equals(view.getUrl())) {
-                        handler.removeCallbacks(loadingTimeout);
-                        showError(
-                                "ওয়েবসাইট লোড হয়নি। "
-                                + "ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।"
-                        );
-                    }
+                    WebView view, int code, String description,
+                    String failingUrl) {
+                if (android.os.Build.VERSION.SDK_INT < 23
+                        && failingUrl != null
+                        && failingUrl.equals(view.getUrl())) {
+                    mainFrameFailed = true;
+                    handler.removeCallbacks(timeout);
+                    showError("ওয়েবসাইট লোড হয়নি। আবার চেষ্টা করুন।");
                 }
             }
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
-            public void onProgressChanged(
-                    WebView view,
-                    int newProgress
-            ) {
-                if (newProgress >= 100 && mainPageLoaded) {
-                    progressBar.setVisibility(View.GONE);
+            public void onProgressChanged(WebView view, int value) {
+                if (!pageLoaded && !mainFrameFailed) {
+                    progress.setVisibility(View.VISIBLE);
                 }
             }
         });
 
-        if (savedInstanceState != null) {
-            if (webView.restoreState(savedInstanceState) == null) {
+        if (state != null) {
+            if (webView.restoreState(state) == null) {
                 loadHome();
             }
         } else {
@@ -228,85 +185,72 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void createErrorLayout() {
-        errorLayout = new LinearLayout(this);
-        errorLayout.setOrientation(LinearLayout.VERTICAL);
-        errorLayout.setGravity(Gravity.CENTER);
-        errorLayout.setPadding(32, 32, 32, 32);
-        errorLayout.setBackgroundColor(Color.WHITE);
+    private void buildErrorScreen() {
+        errorScreen = new LinearLayout(this);
+        errorScreen.setOrientation(LinearLayout.VERTICAL);
+        errorScreen.setGravity(Gravity.CENTER);
+        errorScreen.setPadding(32, 32, 32, 32);
+        errorScreen.setBackgroundColor(Color.WHITE);
 
         TextView title = new TextView(this);
         title.setText("MINHAJ APPS");
-        title.setTextColor(Color.rgb(35, 35, 35));
-        title.setTextSize(24);
+        title.setTextSize(23);
+        title.setTextColor(Color.BLACK);
         title.setGravity(Gravity.CENTER);
 
-        errorMessage = new TextView(this);
-        errorMessage.setText(
-                "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
-        );
-        errorMessage.setTextColor(Color.DKGRAY);
-        errorMessage.setTextSize(16);
-        errorMessage.setGravity(Gravity.CENTER);
-        errorMessage.setPadding(0, 20, 0, 20);
+        TextView message = new TextView(this);
+        message.setText("ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।");
+        message.setTextSize(16);
+        message.setTextColor(Color.DKGRAY);
+        message.setGravity(Gravity.CENTER);
+        message.setPadding(0, 16, 0, 16);
 
-        Button retryButton = new Button(this);
-        retryButton.setText("আবার চেষ্টা করুন");
-        retryButton.setOnClickListener(v -> loadHome());
+        Button retry = new Button(this);
+        retry.setText("আবার চেষ্টা করুন");
+        retry.setOnClickListener(v -> loadHome());
 
-        errorLayout.addView(title);
-        errorLayout.addView(errorMessage);
-        errorLayout.addView(retryButton);
+        errorScreen.addView(title);
+        errorScreen.addView(message);
+        errorScreen.addView(retry);
+        errorScreen.setVisibility(View.GONE);
 
-        errorLayout.setVisibility(View.GONE);
-
-        rootLayout.addView(errorLayout,
-                new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                ));
+        root.addView(errorScreen, new FrameLayout.LayoutParams(-1, -1));
     }
 
     private void showError(String message) {
-        if (isFinishing() || webView == null) {
-            return;
-        }
+        if (isFinishing() || webView == null) return;
 
-        progressBar.setVisibility(View.GONE);
-        errorMessage.setText(message);
-        errorLayout.setVisibility(View.VISIBLE);
+        TextView text = (TextView) errorScreen.getChildAt(1);
+        text.setText(message);
+        progress.setVisibility(View.GONE);
+        errorScreen.setVisibility(View.VISIBLE);
     }
 
     private void loadHome() {
-        if (webView == null) {
-            return;
-        }
+        if (webView == null) return;
 
-        handler.removeCallbacks(loadingTimeout);
-        mainPageLoaded = false;
-        errorLayout.setVisibility(View.GONE);
-        progressBar.setVisibility(View.VISIBLE);
-
+        handler.removeCallbacks(timeout);
+        pageLoaded = false;
+        mainFrameFailed = false;
+        errorScreen.setVisibility(View.GONE);
+        progress.setVisibility(View.VISIBLE);
         webView.stopLoading();
         webView.loadUrl(HOME_URL);
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        if (webView != null) {
-            webView.saveState(outState);
-        }
-
-        super.onSaveInstanceState(outState);
+    protected void onSaveInstanceState(Bundle out) {
+        if (webView != null) webView.saveState(out);
+        super.onSaveInstanceState(out);
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (errorLayout != null
-                && errorLayout.getVisibility() == View.VISIBLE) {
+        if (errorScreen != null
+                && errorScreen.getVisibility() == View.VISIBLE) {
+            errorScreen.setVisibility(View.GONE);
             if (webView != null && webView.canGoBack()) {
-                errorLayout.setVisibility(View.GONE);
                 webView.goBack();
             } else {
                 super.onBackPressed();
@@ -324,20 +268,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
-
         if (webView != null) {
             webView.stopLoading();
             webView.setWebChromeClient(null);
             webView.setWebViewClient(null);
-
-            if (rootLayout != null) {
-                rootLayout.removeView(webView);
-            }
-
+            root.removeView(webView);
             webView.destroy();
             webView = null;
         }
-
         super.onDestroy();
     }
 }
