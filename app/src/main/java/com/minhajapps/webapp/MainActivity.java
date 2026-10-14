@@ -4,13 +4,13 @@ package com.minhajapps.webapp;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
-import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -19,6 +19,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -36,9 +37,20 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private ProgressBar progressBar;
     private FrameLayout rootLayout;
-    private View errorLayout;
+    private LinearLayout errorLayout;
+    private TextView errorMessage;
 
-    private boolean pageLoaded = false;
+    private final Handler handler =
+            new Handler(Looper.getMainLooper());
+
+    private boolean mainPageLoaded = false;
+
+    private final Runnable loadingTimeout = () -> {
+        if (!mainPageLoaded && webView != null) {
+            showError("ওয়েবসাইট লোড হতে দেরি হচ্ছে। "
+                    + "ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।");
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,15 +73,18 @@ public class MainActivity extends AppCompatActivity {
         ));
 
         progressBar = new ProgressBar(this);
+        progressBar.setIndeterminate(true);
+
         FrameLayout.LayoutParams progressParams =
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         Gravity.CENTER
                 );
+
         rootLayout.addView(progressBar, progressParams);
 
-        createErrorScreen();
+        createErrorLayout();
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -82,17 +97,6 @@ public class MainActivity extends AppCompatActivity {
         settings.setMixedContentMode(
                 WebSettings.MIXED_CONTENT_NEVER_ALLOW
         );
-
-        // Follow the system theme where WebView supports it.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            settings.setForceDark(
-                    WebSettings.FORCE_DARK_AUTO
-            );
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            settings.setAlgorithmicDarkeningAllowed(true);
-        }
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(
@@ -148,21 +152,23 @@ public class MainActivity extends AppCompatActivity {
                     String url,
                     android.graphics.Bitmap favicon
             ) {
-                if (errorLayout != null) {
-                    errorLayout.setVisibility(View.GONE);
-                }
-
+                mainPageLoaded = false;
+                errorLayout.setVisibility(View.GONE);
                 progressBar.setVisibility(View.VISIBLE);
+
+                handler.removeCallbacks(loadingTimeout);
+                handler.postDelayed(loadingTimeout, 20000);
             }
 
             @Override
-            public void onPageFinished(WebView view, String url) {
-                pageLoaded = true;
+            public void onPageFinished(
+                    WebView view,
+                    String url
+            ) {
+                mainPageLoaded = true;
+                handler.removeCallbacks(loadingTimeout);
                 progressBar.setVisibility(View.GONE);
-
-                if (errorLayout != null) {
-                    errorLayout.setVisibility(View.GONE);
-                }
+                errorLayout.setVisibility(View.GONE);
             }
 
             @Override
@@ -172,17 +178,32 @@ public class MainActivity extends AppCompatActivity {
                     WebResourceError error
             ) {
                 if (request.isForMainFrame()) {
-                    showErrorScreen();
+                    handler.removeCallbacks(loadingTimeout);
+                    showError(
+                            "ওয়েবসাইট লোড হয়নি। "
+                            + "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
+                    );
                 }
             }
 
+            @SuppressWarnings("deprecation")
             @Override
-            public boolean onRenderProcessGone(
+            public void onReceivedError(
                     WebView view,
-                    RenderProcessGoneDetail detail
+                    int errorCode,
+                    String description,
+                    String failingUrl
             ) {
-                showErrorScreen();
-                return true;
+                if (android.os.Build.VERSION.SDK_INT < 23) {
+                    if (failingUrl != null
+                            && failingUrl.equals(view.getUrl())) {
+                        handler.removeCallbacks(loadingTimeout);
+                        showError(
+                                "ওয়েবসাইট লোড হয়নি। "
+                                + "ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।"
+                        );
+                    }
+                }
             }
         });
 
@@ -192,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
                     WebView view,
                     int newProgress
             ) {
-                if (newProgress >= 100) {
+                if (newProgress >= 100 && mainPageLoaded) {
                     progressBar.setVisibility(View.GONE);
                 }
             }
@@ -200,74 +221,74 @@ public class MainActivity extends AppCompatActivity {
 
         if (savedInstanceState != null) {
             if (webView.restoreState(savedInstanceState) == null) {
-                webView.loadUrl(HOME_URL);
+                loadHome();
             }
         } else {
-            webView.loadUrl(HOME_URL);
+            loadHome();
         }
     }
 
-    private void createErrorScreen() {
-        FrameLayout container = new FrameLayout(this);
-        container.setBackgroundColor(Color.WHITE);
-
-        android.widget.LinearLayout content =
-                new android.widget.LinearLayout(this);
-
-        content.setOrientation(
-                android.widget.LinearLayout.VERTICAL
-        );
-        content.setGravity(Gravity.CENTER);
-        content.setPadding(32, 32, 32, 32);
+    private void createErrorLayout() {
+        errorLayout = new LinearLayout(this);
+        errorLayout.setOrientation(LinearLayout.VERTICAL);
+        errorLayout.setGravity(Gravity.CENTER);
+        errorLayout.setPadding(32, 32, 32, 32);
+        errorLayout.setBackgroundColor(Color.WHITE);
 
         TextView title = new TextView(this);
-        title.setText("ইন্টারনেট সংযোগ পাওয়া যাচ্ছে না");
-        title.setTextColor(Color.rgb(30, 30, 30));
-        title.setTextSize(20);
+        title.setText("MINHAJ APPS");
+        title.setTextColor(Color.rgb(35, 35, 35));
+        title.setTextSize(24);
         title.setGravity(Gravity.CENTER);
 
-        TextView message = new TextView(this);
-        message.setText(
+        errorMessage = new TextView(this);
+        errorMessage.setText(
                 "ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
         );
-        message.setTextColor(Color.DKGRAY);
-        message.setTextSize(15);
-        message.setGravity(Gravity.CENTER);
-        message.setPadding(0, 16, 0, 24);
+        errorMessage.setTextColor(Color.DKGRAY);
+        errorMessage.setTextSize(16);
+        errorMessage.setGravity(Gravity.CENTER);
+        errorMessage.setPadding(0, 20, 0, 20);
 
         Button retryButton = new Button(this);
         retryButton.setText("আবার চেষ্টা করুন");
-        retryButton.setOnClickListener(v -> {
-            pageLoaded = false;
-            container.setVisibility(View.GONE);
-            progressBar.setVisibility(View.VISIBLE);
-            webView.loadUrl(HOME_URL);
-        });
+        retryButton.setOnClickListener(v -> loadHome());
 
-        content.addView(title);
-        content.addView(message);
-        content.addView(retryButton);
+        errorLayout.addView(title);
+        errorLayout.addView(errorMessage);
+        errorLayout.addView(retryButton);
 
-        container.addView(content, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-        ));
+        errorLayout.setVisibility(View.GONE);
 
-        container.setVisibility(View.GONE);
-        rootLayout.addView(container, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-        ));
-
-        errorLayout = container;
+        rootLayout.addView(errorLayout,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                ));
     }
 
-    private void showErrorScreen() {
-        progressBar.setVisibility(View.GONE);
-
-        if (errorLayout != null) {
-            errorLayout.setVisibility(View.VISIBLE);
+    private void showError(String message) {
+        if (isFinishing() || webView == null) {
+            return;
         }
+
+        progressBar.setVisibility(View.GONE);
+        errorMessage.setText(message);
+        errorLayout.setVisibility(View.VISIBLE);
+    }
+
+    private void loadHome() {
+        if (webView == null) {
+            return;
+        }
+
+        handler.removeCallbacks(loadingTimeout);
+        mainPageLoaded = false;
+        errorLayout.setVisibility(View.GONE);
+        progressBar.setVisibility(View.VISIBLE);
+
+        webView.stopLoading();
+        webView.loadUrl(HOME_URL);
     }
 
     @Override
@@ -275,12 +296,24 @@ public class MainActivity extends AppCompatActivity {
         if (webView != null) {
             webView.saveState(outState);
         }
+
         super.onSaveInstanceState(outState);
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (errorLayout != null
+                && errorLayout.getVisibility() == View.VISIBLE) {
+            if (webView != null && webView.canGoBack()) {
+                errorLayout.setVisibility(View.GONE);
+                webView.goBack();
+            } else {
+                super.onBackPressed();
+            }
+            return;
+        }
+
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {
@@ -290,6 +323,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+
         if (webView != null) {
             webView.stopLoading();
             webView.setWebChromeClient(null);
