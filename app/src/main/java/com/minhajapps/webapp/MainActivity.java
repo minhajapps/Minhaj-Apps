@@ -1,6 +1,7 @@
 package com.minhajapps.webapp;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -8,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -40,9 +40,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         rootLayout = new FrameLayout(this);
-        rootLayout.setBackgroundColor(
-                getResources().getColor(R.color.splash_background)
-        );
+        rootLayout.setBackgroundColor(Color.BLACK);
 
         webView = new WebView(this);
 
@@ -64,23 +62,23 @@ public class MainActivity extends AppCompatActivity {
 
         progressBar.setLayoutParams(progressParams);
         progressBar.setIndeterminate(true);
+        progressBar.setVisibility(View.VISIBLE);
+
         rootLayout.addView(progressBar);
 
         setContentView(rootLayout);
 
         WebSettings settings = webView.getSettings();
-
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
         settings.setLoadsImagesAutomatically(true);
         settings.setSupportZoom(false);
         settings.setAllowFileAccess(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(
                 WebSettings.MIXED_CONTENT_NEVER_ALLOW
         );
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance()
@@ -93,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
                     WebView view,
                     WebResourceRequest request
             ) {
-                return handleUrl(request.getUrl());
+                return openUrl(request.getUrl());
             }
 
             @SuppressWarnings("deprecation")
@@ -102,23 +100,29 @@ public class MainActivity extends AppCompatActivity {
                     WebView view,
                     String url
             ) {
-                return handleUrl(Uri.parse(url));
+                return openUrl(Uri.parse(url));
             }
 
-            private boolean handleUrl(Uri uri) {
-                if ("https".equalsIgnoreCase(uri.getScheme())
-                        && ALLOWED_HOST.equalsIgnoreCase(uri.getHost())) {
+            private boolean openUrl(Uri uri) {
+                String scheme = uri.getScheme();
+                String host = uri.getHost();
+
+                if ("https".equalsIgnoreCase(scheme)
+                        && ALLOWED_HOST.equalsIgnoreCase(host)) {
                     return false;
                 }
 
-                try {
-                    Intent intent = new Intent(
-                            Intent.ACTION_VIEW, uri
-                    );
-                    startActivity(intent);
-                } catch (Exception ignored) {
-                    // কোনো অ্যাপ লিংকটি খুলতে না পারলে
-                    // বর্তমান অ্যাপ চালু থাকবে।
+                if ("http".equalsIgnoreCase(scheme)
+                        || "https".equalsIgnoreCase(scheme)
+                        || "mailto".equalsIgnoreCase(scheme)
+                        || "tel".equalsIgnoreCase(scheme)) {
+                    try {
+                        Intent intent = new Intent(
+                                Intent.ACTION_VIEW, uri
+                        );
+                        startActivity(intent);
+                    } catch (Exception ignored) {
+                    }
                 }
 
                 return true;
@@ -140,17 +144,6 @@ public class MainActivity extends AppCompatActivity {
             ) {
                 progressBar.setVisibility(View.GONE);
             }
-
-            @Override
-            public void onReceivedError(
-                    WebView view,
-                    WebResourceRequest request,
-                    WebResourceError error
-            ) {
-                if (request.isForMainFrame()) {
-                    progressBar.setVisibility(View.GONE);
-                }
-            }
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
@@ -159,11 +152,11 @@ public class MainActivity extends AppCompatActivity {
                     WebView view,
                     int newProgress
             ) {
-                progressBar.setVisibility(
-                        newProgress >= 100
-                                ? View.GONE
-                                : View.VISIBLE
-                );
+                if (newProgress >= 100) {
+                    progressBar.setVisibility(View.GONE);
+                } else {
+                    progressBar.setVisibility(View.VISIBLE);
+                }
             }
         });
 
