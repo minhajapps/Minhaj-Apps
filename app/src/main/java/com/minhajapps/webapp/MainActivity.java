@@ -4,14 +4,12 @@ package com.minhajapps.webapp;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -27,7 +25,6 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private ProgressBar progressBar;
     private FrameLayout rootLayout;
-    private boolean firstPageFinished = false;
 
     private static final String HOME_URL =
             "https://minhajapps.github.io/";
@@ -47,9 +44,6 @@ public class MainActivity extends AppCompatActivity {
         rootLayout.setBackgroundColor(Color.BLACK);
 
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.BLACK);
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-
         webView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -58,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
         rootLayout.addView(webView);
 
         progressBar = new ProgressBar(this);
-
         FrameLayout.LayoutParams progressParams =
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -74,7 +67,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(rootLayout);
 
         WebSettings settings = webView.getSettings();
-
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setLoadsImagesAutomatically(true);
@@ -86,17 +78,9 @@ public class MainActivity extends AppCompatActivity {
                 WebSettings.MIXED_CONTENT_NEVER_ALLOW
         );
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            settings.setSafeBrowsingEnabled(true);
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            settings.setOffscreenPreRaster(true);
-        }
-
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookies(webView, true);
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance()
+                .setAcceptThirdPartyCookies(webView, true);
 
         webView.setWebViewClient(new WebViewClient() {
 
@@ -131,11 +115,11 @@ public class MainActivity extends AppCompatActivity {
                         || "mailto".equalsIgnoreCase(scheme)
                         || "tel".equalsIgnoreCase(scheme)) {
                     try {
-                        startActivity(new Intent(
+                        Intent intent = new Intent(
                                 Intent.ACTION_VIEW, uri
-                        ));
+                        );
+                        startActivity(intent);
                     } catch (Exception ignored) {
-                        // No compatible app available.
                     }
                 }
 
@@ -148,9 +132,7 @@ public class MainActivity extends AppCompatActivity {
                     String url,
                     android.graphics.Bitmap favicon
             ) {
-                if (!firstPageFinished) {
-                    progressBar.setVisibility(View.VISIBLE);
-                }
+                progressBar.setVisibility(View.VISIBLE);
             }
 
             @Override
@@ -158,21 +140,7 @@ public class MainActivity extends AppCompatActivity {
                     WebView view,
                     String url
             ) {
-                firstPageFinished = true;
                 progressBar.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onReceivedError(
-                    WebView view,
-                    WebResourceRequest request,
-                    WebResourceError error
-            ) {
-                super.onReceivedError(view, request, error);
-
-                if (request.isForMainFrame()) {
-                    progressBar.setVisibility(View.GONE);
-                }
             }
         });
 
@@ -182,16 +150,16 @@ public class MainActivity extends AppCompatActivity {
                     WebView view,
                     int newProgress
             ) {
-                if (!firstPageFinished && newProgress >= 100) {
+                if (newProgress >= 100) {
                     progressBar.setVisibility(View.GONE);
+                } else {
+                    progressBar.setVisibility(View.VISIBLE);
                 }
             }
         });
 
         if (savedInstanceState != null) {
-            if (webView.restoreState(savedInstanceState) == null) {
-                webView.loadUrl(HOME_URL);
-            }
+            webView.restoreState(savedInstanceState);
         } else {
             webView.loadUrl(HOME_URL);
         }
@@ -202,7 +170,6 @@ public class MainActivity extends AppCompatActivity {
         if (webView != null) {
             webView.saveState(outState);
         }
-
         super.onSaveInstanceState(outState);
     }
 
